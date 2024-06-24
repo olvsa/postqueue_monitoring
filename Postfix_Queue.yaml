@@ -1,0 +1,358 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: 34ce7a95666549e18e28b26bd59d7503
+      template: postqueue
+      name: 'Postfix Queue'
+      description: |
+        /etc/zabbix/zabbix_agent2.d/plugins.d/_postfix.conf
+        
+        UserParameter=postmulti.la,/usr/sbin/postmulti -la | /usr/bin/awk '{ printf("{\"instance\":\"%s\",\"enabled\":\"%s\"}\n", $4, $3) }' | /usr/bin/jq --slurp -c .
+        UserParameter=postqueue[*],/usr/sbin/postqueue -j -c "$1" | /usr/bin/jq 'del(.recipients,.sender,.forced_expire,.arrival_time,.queue_id)' | /usr/bin/jq --slurp -c .
+        UserParameter=postqueue.sender[*],/usr/sbin/postqueue -j -c "$1" | /usr/bin/jq 'select(.sender=="$2")' | /usr/bin/jq 'del(.recipients,.sender,.forced_expire,.arrival_time,.queue_id)' | /usr/bin/jq --slurp -c .
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 8039c00c8d524ed5a486bbc4bcd9262c
+          name: postmulti.la
+          key: postmulti.la
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          tags:
+            - tag: application
+              value: postfix
+            - tag: component
+              value: raw
+      discovery_rules:
+        - uuid: 167f48dceed24257a0ec0cdc429d1a3b
+          name: 'Discovery Instances'
+          type: DEPENDENT
+          key: instances.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: 38040cb00d8d472b956f31bea36bd05a
+              name: '[{#INSTANCE}] enabled'
+              type: DEPENDENT
+              key: 'instance.enabled.[{#INSTANCE}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@[''instance''] == "{#INSTANCE}")].[''enabled''].first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: postmulti.la
+              tags:
+                - tag: application
+                  value: postfix
+              trigger_prototypes:
+                - uuid: 5c5c399a81ed43269c87babc53b617af
+                  expression: 'last(/postqueue/instance.enabled.[{#INSTANCE}])<>"y"'
+                  name: '[{#INSTANCE}] enabled'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: postfix
+            - uuid: 3072db105d3c482db4df5f3608c806e8
+              name: '[{#INSTANCE}] [active] items'
+              type: DEPENDENT
+              key: 'postqueue.active.items[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''active'')].length()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 7b49aa79b77c48fc9955c7ebfe361859
+              name: '[{#INSTANCE}] [active] size'
+              type: DEPENDENT
+              key: 'postqueue.active.size[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''active'')].[''message_size''].sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 0fbbbeb2cdd44d93b36936154a2763ba
+              name: '[{#INSTANCE}] [bounce] items'
+              type: DEPENDENT
+              key: 'postqueue.bounce.items[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''bounce'')].length()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 5feeb984d5bb44268c5c4560a8027efb
+              name: '[{#INSTANCE}] [bounce] size'
+              type: DEPENDENT
+              key: 'postqueue.bounce.size[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''bounce'')].[''message_size''].sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 6dd177b647784be4806802574ef539de
+              name: '[{#INSTANCE}] [defer] items'
+              type: DEPENDENT
+              key: 'postqueue.defer.items[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''defer'')].length()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: de467003d5c04268b13cd97f9606785c
+              name: '[{#INSTANCE}] [defer] size'
+              type: DEPENDENT
+              key: 'postqueue.defer.size[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''defer'')].[''message_size''].sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: c31fcf17ce6140d0aa6f708743f2abf2
+              name: '[{#INSTANCE}] [deferred] items'
+              type: DEPENDENT
+              key: 'postqueue.deferred.items[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''deferred'')].length()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: b0bb62747d1846ac87b56b355d875ee6
+              name: '[{#INSTANCE}] [deferred] size'
+              type: DEPENDENT
+              key: 'postqueue.deferred.size[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''deferred'')].[''message_size''].sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 5591e82a9d9f4c33b8d33ef7e295a425
+              name: '[{#INSTANCE}] [incoming] items'
+              type: DEPENDENT
+              key: 'postqueue.incoming.items[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''incoming'')].length()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 27a2b23dfa234e55bb0e9877c7a9089a
+              name: '[{#INSTANCE}] [incoming] size'
+              type: DEPENDENT
+              key: 'postqueue.incoming.size[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''incoming'')].[''message_size''].sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 0dc72ab900ab448bad18f4e19d6862ed
+              name: '[{#INSTANCE}] postqueue items'
+              type: DEPENDENT
+              key: 'postqueue.items[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[*].length()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+              trigger_prototypes:
+                - uuid: ad09d90d814b48aa901d15c7bba957ee
+                  expression: 'avg(/postqueue/postqueue.items[{#INSTANCE}],5m)>{$POSTQUEUE_ITEMS_MAX}'
+                  name: '[{#INSTANCE}] postqueue items >{$POSTQUEUE_ITEMS_MAX}'
+                  priority: WARNING
+                  dependencies:
+                    - name: '[{#INSTANCE}] enabled'
+                      expression: 'last(/postqueue/instance.enabled.[{#INSTANCE}])<>"y"'
+                  tags:
+                    - tag: scope
+                      value: postfix
+            - uuid: 31a1c95820ab4179af503f761b0a1d00
+              name: '[{#INSTANCE}] postqueue size'
+              type: DEPENDENT
+              key: 'postqueue.size[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[''message_size''].sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 3d42d4f232e4449bbd877a9b90b4dda1
+              name: '[{#INSTANCE}] [trace] items'
+              type: DEPENDENT
+              key: 'postqueue.trace.items[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''trace'')].length()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: 9e5c2e82ee7a49fe810e00c8ad43a4f5
+              name: '[{#INSTANCE}] [trace] size'
+              type: DEPENDENT
+              key: 'postqueue.trace.size[{#INSTANCE}]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.queue_name == ''trace'')].[''message_size''].sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'postqueue[{#INSTANCE}]'
+              tags:
+                - tag: application
+                  value: postfix
+            - uuid: be2f42cf5fd143acb8dd6d14fc987be2
+              name: '[{#INSTANCE}] postqueue'
+              key: 'postqueue[{#INSTANCE}]'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              tags:
+                - tag: application
+                  value: postfix
+                - tag: component
+                  value: raw
+          master_item:
+            key: postmulti.la
+          lld_macro_paths:
+            - lld_macro: '{#ENABLED}'
+              path: '$[''enabled'']'
+            - lld_macro: '{#INSTANCE}'
+              path: '$[''instance'']'
+      tags:
+        - tag: class
+          value: application
+        - tag: target
+          value: postfix
+      macros:
+        - macro: '{$POSTQUEUE_ITEMS_MAX}'
+          value: '10'
